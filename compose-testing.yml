@@ -1,0 +1,25 @@
+volumes:
+  relay-1-test-db:
+  relay-2-test-db:
+
+services:
+  relay-1:
+    build: .
+    ports:
+      - "3334:3334"
+    volumes:
+      - ./relay-1-test-config.json:/root/config.json:ro,Z
+      - relay-1-test-db:/root/data
+    restart: unless-stopped
+      
+  relay-2:
+    build: .
+    ports:
+      - "3335:3335"
+    volumes:
+      - ./relay-2-test-config.json:/root/config.json:ro,Z
+      - relay-2-test-db:/root/data
+    restart: unless-stopped
+    depends_on:
+      - relay-1
+    command: sh -c "sleep 5 && ./relay"
