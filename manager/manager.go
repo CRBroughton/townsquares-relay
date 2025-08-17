@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 )
@@ -15,14 +16,28 @@ type RelayConnection struct {
 	active bool
 }
 
+type EventMetadata struct {
+	SourceRelay string
+	ReceivedAt  time.Time
+	Local       bool
+}
+
 type RelayManager struct {
-	connections map[string]*RelayConnection
-	mu          sync.RWMutex
+	connections   map[string]*RelayConnection
+	mu            sync.RWMutex
+	eventStore    map[string]*nostr.Event
+	eventMetadata map[string]*EventMetadata
+	storeMu       sync.RWMutex
+	seenEvents    map[string]bool
+	seenMu        sync.RWMutex
 }
 
 func NewRelayManager() *RelayManager {
 	return &RelayManager{
-		connections: make(map[string]*RelayConnection),
+		connections:   make(map[string]*RelayConnection),
+		eventStore:    make(map[string]*nostr.Event),
+		eventMetadata: make(map[string]*EventMetadata),
+		seenEvents:    make(map[string]bool),
 	}
 }
 
@@ -69,6 +84,39 @@ func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
 	for event := range sub.Events {
 		log.Printf("Recieved event %s from relay %s", event.ID[:8], conn.URL)
 		// TODO - Event handling plz
+	}
+}
+
+func (rm *RelayManager) Broadcast(ctx context.Context, event *nostr.Event) {
+	// This relay has now seen this event
+	rm.seenMu.Lock()
+	rm.seenEvents[event.ID] = true
+	rm.seenMu.Unlock()
+
+	rm.storeMu.Lock()
+	rm.eventMetadata[event.ID] = &EventMetadata{
+		SourceRelay: "local",
+		ReceivedAt:  time.Now(),
+		Local:       true,
+	}
+	rm.storeMu.Unlock()
+
+	// Now we broadcast to all the relays
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+
+	for url, conn := range rm.connections {
+		if !conn.active {
+			continue
+		}
+
+		go func(relay *nostr.Relay, relayURL string) {
+			if err := relay.Publish(ctx, *event); err != nil {
+				log.Printf("Failed to publish event to the relay %s: %v", relayURL, err)
+			} else {
+				log.Printf("Published event %s to the relay %s", event.ID[:8], relayURL)
+			}
+		}(conn.Relay, url)
 	}
 }
 
