@@ -1,0 +1,6 @@
+{
+  "port": ":3334",
+  "name": "Townsquares relay",
+  "pubkey": "YOUR_ACTUAL_PUB_KEY_HERE",
+  "description": "A townsquares relay"
+}

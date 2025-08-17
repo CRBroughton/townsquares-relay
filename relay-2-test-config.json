@@ -1,0 +1,8 @@
+{
+  "port": ":3335",
+  "name": "Townsquares relay",
+  "pubkey": "YOUR_ACTUAL_PUB_KEY_HERE",
+  "description": "A townsquares relay",
+  "relays": ["ws://relay-1:3334"],
+  "db_path": "relay_2_db"
+}

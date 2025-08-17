@@ -2,6 +2,7 @@
     "conventionalCommits.scopes": [
         "relay",
         "relay-manager",
-        "dependencies"
+        "dependencies",
+        "deployment"
     ]
 }
