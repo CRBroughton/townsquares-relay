@@ -55,6 +55,8 @@ func main() {
 	}
 	defer relayManager.Close()
 
+	relayManager.StartSubscriptions(ctx)
+
 	// TODO - add actual storage
 	store := make(map[string]*nostr.Event, 120)
 
