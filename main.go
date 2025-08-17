@@ -13,10 +13,11 @@ import (
 )
 
 type Config struct {
-	Port        string `json:"port"`
-	Name        string `json:"name"`
-	PubKey      string `json:"pubkey"`
-	Description string `json:"description"`
+	Port        string   `json:"port"`
+	Name        string   `json:"name"`
+	PubKey      string   `json:"pubkey"`
+	Description string   `json:"description"`
+	Relays      []string `json:"relays"`
 }
 
 func loadConfig(filename string) (*Config, error) {
