@@ -10,6 +10,7 @@ import (
 
 	"github.com/fiatjaf/khatru"
 	"github.com/nbd-wtf/go-nostr"
+	"github.crom/crbroughton/townsquares-relay/manager"
 )
 
 type Config struct {
@@ -44,6 +45,15 @@ func main() {
 	relay.Info.Name = config.Name
 	relay.Info.PubKey = config.PubKey
 	relay.Info.Description = config.Description
+
+	ctx := context.Background()
+	relayManager := manager.NewRelayManager()
+	for _, relayURL := range config.Relays {
+		if err := relayManager.Connect(ctx, relayURL); err != nil {
+			log.Printf("⚠️ Failed to connect to relay %s: %v", relayURL, err)
+		}
+	}
+	defer relayManager.Close()
 
 	// TODO - add actual storage
 	store := make(map[string]*nostr.Event, 120)
