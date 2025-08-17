@@ -3,5 +3,6 @@
   "name": "Townsquares relay",
   "pubkey": "YOUR_ACTUAL_PUB_KEY_HERE",
   "description": "A townsquares relay",
-  "relays": []
+  "relays": [],
+  "db_path": "db"
 }

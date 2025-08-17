@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/fiatjaf/eventstore/badger"
 	"github.com/fiatjaf/khatru"
 	"github.com/nbd-wtf/go-nostr"
 	"github.crom/crbroughton/townsquares-relay/manager"
@@ -19,6 +20,7 @@ type Config struct {
 	PubKey      string   `json:"pubkey"`
 	Description string   `json:"description"`
 	Relays      []string `json:"relays"`
+	DBPath      string   `json:"db_path"`
 }
 
 func loadConfig(filename string) (*Config, error) {
@@ -57,11 +59,23 @@ func main() {
 
 	relayManager.StartSubscriptions(ctx)
 
-	// TODO - add actual storage
-	store := make(map[string]*nostr.Event, 120)
+	dbPath := config.DBPath
+	if dbPath == "" {
+		dbPath = "db"
+	}
+
+	db := &badger.BadgerBackend{
+		Path: dbPath,
+	}
+	if err := db.Init(); err != nil {
+		log.Fatalf("Failed to initialize BadgerDB: %v", err)
+	}
+	defer db.Close()
 
 	relay.StoreEvent = append(relay.StoreEvent, func(ctx context.Context, event *nostr.Event) error {
-		store[event.ID] = event
+		if err := db.SaveEvent(ctx, event); err != nil {
+			return err
+		}
 
 		clientIP := khatru.GetIP(ctx)
 		log.Printf("Received event %s from relay %s", event.ID[:8], clientIP)
@@ -74,19 +88,28 @@ func main() {
 		go func() {
 			defer close(ch)
 
-			for _, event := range store {
-				if filter.Matches(event) {
-					select {
-					case ch <- event:
-					case <-ctx.Done():
-						return
-					}
+			// Query local BadgerDB storage
+			localCh, err := db.QueryEvents(ctx, filter)
+			if err != nil {
+				return
+			}
+
+			seenEvents := make(map[string]bool)
+
+			// Send events from local storage
+			for event := range localCh {
+				seenEvents[event.ID] = true
+				select {
+				case ch <- event:
+				case <-ctx.Done():
+					return
 				}
 			}
 
+			// Query events from connected relays
 			for _, event := range relayManager.GetAllEvents() {
 				if filter.Matches(event) {
-					if _, exists := store[event.ID]; !exists {
+					if !seenEvents[event.ID] {
 						select {
 						case ch <- event:
 						case <-ctx.Done():
