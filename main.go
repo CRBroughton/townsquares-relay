@@ -99,7 +99,7 @@ func main() {
 		clientIP := khatru.GetIP(ctx)
 		log.Printf("New connection from %s", clientIP)
 	})
-	relay.OnConnect = append(relay.OnDisconnect, func(ctx context.Context) {
+	relay.OnDisconnect = append(relay.OnDisconnect, func(ctx context.Context) {
 		clientIP := khatru.GetIP(ctx)
 		log.Printf("Connection closed from %s", clientIP)
 	})
