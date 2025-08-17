@@ -88,6 +88,7 @@ func (rm *RelayManager) handleIncomingEvent(event *nostr.Event, sourceURL string
 	rm.storeMu.Unlock()
 	log.Printf("Received event %s from the relay %s", event.ID[:8], sourceURL)
 }
+
 func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
 	sub, err := conn.Relay.Subscribe(ctx, []nostr.Filter{
 		{
@@ -139,6 +140,17 @@ func (rm *RelayManager) Broadcast(ctx context.Context, event *nostr.Event) {
 			}
 		}(conn.Relay, url)
 	}
+}
+
+func (rm *RelayManager) GetAllEvents() []*nostr.Event {
+	rm.storeMu.RLock()
+	defer rm.storeMu.RUnlock()
+
+	events := make([]*nostr.Event, 0, len(rm.eventStore))
+	for _, event := range rm.eventStore {
+		events = append(events, event)
+	}
+	return events
 }
 
 func (rm *RelayManager) Close() {
