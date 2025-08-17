@@ -57,12 +57,24 @@ func main() {
 		go func() {
 			for _, event := range store {
 				if filter.Matches(event) {
-					ch <- event
+					select {
+					case ch <- event:
+					case <-ctx.Done():
+						return
+					}
 				}
 			}
-			close(ch)
 		}()
 		return ch, nil
+	})
+
+	relay.OnConnect = append(relay.OnConnect, func(ctx context.Context) {
+		clientIP := khatru.GetIP(ctx)
+		log.Printf("New connection from %s", clientIP)
+	})
+	relay.OnConnect = append(relay.OnDisconnect, func(ctx context.Context) {
+		clientIP := khatru.GetIP(ctx)
+		log.Printf("Connection closed from %s", clientIP)
 	})
 
 	mux := relay.Router()
