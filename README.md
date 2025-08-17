@@ -18,5 +18,6 @@ is to built a decentralised, mesh-based relay system for hyper-localised communi
 
 #### Documentation Goals
 
+- Create basic README.md file for instructions on how to get up and running
 - Create a Mermaid graph showcasing how clients and relays connect to each other
 - Create a guide on how to set-up and deploy a Townsquares relay
