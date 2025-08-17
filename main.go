@@ -70,6 +70,8 @@ func main() {
 	relay.QueryEvents = append(relay.QueryEvents, func(ctx context.Context, filter nostr.Filter) (chan *nostr.Event, error) {
 		ch := make(chan *nostr.Event)
 		go func() {
+			defer close(ch)
+
 			for _, event := range store {
 				if filter.Matches(event) {
 					select {
