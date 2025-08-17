@@ -21,6 +21,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/fasthttp/websocket v1.5.12 // indirect
 	github.com/fiatjaf/eventstore v0.16.2 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
