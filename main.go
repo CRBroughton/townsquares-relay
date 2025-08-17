@@ -60,6 +60,10 @@ func main() {
 
 	relay.StoreEvent = append(relay.StoreEvent, func(ctx context.Context, event *nostr.Event) error {
 		store[event.ID] = event
+
+		clientIP := khatru.GetIP(ctx)
+		log.Printf("Received event %s from relay %s", event.ID[:8], clientIP)
+		relayManager.Broadcast(ctx, event)
 		return nil
 	})
 
