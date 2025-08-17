@@ -79,6 +79,18 @@ func main() {
 					}
 				}
 			}
+
+			for _, event := range relayManager.GetAllEvents() {
+				if filter.Matches(event) {
+					if _, exists := store[event.ID]; !exists {
+						select {
+						case ch <- event:
+						case <-ctx.Done():
+							return
+						}
+					}
+				}
+			}
 		}()
 		return ch, nil
 	})
