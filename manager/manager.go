@@ -67,6 +67,27 @@ func (rm *RelayManager) Connect(ctx context.Context, url string) error {
 	return nil
 }
 
+func (rm *RelayManager) handleIncomingEvent(event *nostr.Event, sourceURL string) {
+	// Make sure no dupes
+	rm.seenMu.Lock()
+	if rm.seenEvents[event.ID] {
+		rm.seenMu.Unlock()
+		return
+	}
+	rm.seenEvents[event.ID] = true
+	rm.seenMu.Unlock()
+
+	rm.storeMu.Lock()
+	rm.eventStore[event.ID] = event
+	rm.eventMetadata[event.ID] = &EventMetadata{
+		SourceRelay: sourceURL,
+		ReceivedAt:  time.Now(),
+		Local:       false,
+	}
+
+	rm.storeMu.Unlock()
+	log.Printf("Received event %s from the relay %s", event.ID[:8], sourceURL)
+}
 func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
 	sub, err := conn.Relay.Subscribe(ctx, []nostr.Filter{
 		{
@@ -83,7 +104,7 @@ func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
 
 	for event := range sub.Events {
 		log.Printf("Recieved event %s from relay %s", event.ID[:8], conn.URL)
-		// TODO - Event handling plz
+		rm.handleIncomingEvent(event, conn.URL)
 	}
 }
 
