@@ -153,6 +153,17 @@ func (rm *RelayManager) GetAllEvents() []*nostr.Event {
 	return events
 }
 
+func (rm *RelayManager) StartSubscriptions(ctx context.Context) {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+
+	for _, conn := range rm.connections {
+		if conn.active {
+			go rm.Subscribe(ctx, conn)
+		}
+	}
+}
+
 func (rm *RelayManager) Close() {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
