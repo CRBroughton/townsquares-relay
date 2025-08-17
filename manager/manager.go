@@ -26,7 +26,7 @@ func NewRelayManager() *RelayManager {
 	}
 }
 
-func (rm *RelayManager) ConnectToRelay(ctx context.Context, url string) error {
+func (rm *RelayManager) Connect(ctx context.Context, url string) error {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
@@ -50,4 +50,34 @@ func (rm *RelayManager) ConnectToRelay(ctx context.Context, url string) error {
 	log.Printf("Connected to the external relay at: %s", url)
 
 	return nil
+}
+
+func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
+	sub, err := conn.Relay.Subscribe(ctx, []nostr.Filter{
+		{
+			Kinds: []int{nostr.KindTextNote},
+			Limit: 100,
+		},
+	})
+	if err != nil {
+		log.Printf("Failed to subscribe to the relay at %s: %v", conn.URL, err)
+		return
+	}
+
+	log.Printf("Subscribed to the events from relay %s", conn.URL)
+
+	for event := range sub.Events {
+		log.Printf("Recieved event %s from relay %s", event.ID[:8], conn.URL)
+		// TODO - Event handling plz
+	}
+}
+
+func (rm *RelayManager) Close() {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	for url, conn := range rm.connections {
+		conn.Relay.Close()
+		log.Printf("Closed the connection to the external relay at: %s", url)
+	}
 }

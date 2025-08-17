@@ -45,7 +45,7 @@ func TestCanSuccessfullyConnectToRelay(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := rm.ConnectToRelay(ctx, wsURL)
+	err := rm.Connect(ctx, wsURL)
 	if err != nil {
 		t.Fatalf("Expected successful connection, got error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestVerifyInvalidURLSArentStored(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	err := rm.ConnectToRelay(ctx, "invalid-url")
+	err := rm.Connect(ctx, "invalid-url")
 	if err == nil {
 		t.Fatal("Expected error for invalid URL, got nil")
 	}
@@ -97,7 +97,7 @@ func TestVerifyUnreachableURLSArentStored(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	err := rm.ConnectToRelay(ctx, "ws://localhost:99999")
+	err := rm.Connect(ctx, "ws://localhost:99999")
 	if err == nil {
 		t.Fatal("Expected error for unreachable URL, got nil")
 	}
@@ -122,7 +122,7 @@ func TestVerifyDuplicateConnectionsArentStored(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := rm.ConnectToRelay(ctx, wsURL)
+	err := rm.Connect(ctx, wsURL)
 	if err != nil {
 		t.Fatalf("First connection failed: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestVerifyDuplicateConnectionsArentStored(t *testing.T) {
 	rm.mu.RUnlock()
 
 	// Second connection attempt
-	err = rm.ConnectToRelay(ctx, wsURL)
+	err = rm.Connect(ctx, wsURL)
 	if err != nil {
 		t.Fatalf("Second connection failed: %v", err)
 	}
@@ -170,10 +170,10 @@ func TestCanConnectToMultipleRelays(t *testing.T) {
 	// Here we're connecting to both relays concurrently
 	errChan := make(chan error, 2)
 	go func() {
-		errChan <- rm.ConnectToRelay(ctx, wsURL1)
+		errChan <- rm.Connect(ctx, wsURL1)
 	}()
 	go func() {
-		errChan <- rm.ConnectToRelay(ctx, wsURL2)
+		errChan <- rm.Connect(ctx, wsURL2)
 	}()
 
 	// Waiting for both connections...
@@ -209,7 +209,7 @@ func TestVerifyCancelledContextsArentStored(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := rm.ConnectToRelay(ctx, "ws://localhost:8080")
+	err := rm.Connect(ctx, "ws://localhost:8080")
 	if err == nil {
 		t.Fatal("Expected error for cancelled context, got nil")
 	}
