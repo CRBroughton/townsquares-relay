@@ -7,11 +7,11 @@ is to built a decentralised, mesh-based relay system for hyper-localised communi
 
 #### Technical Goals
 
-- Create basic implementation of the relay server
-- Ensure the system is resiliant and propogates events relay-to-relay
+- Create basic implementation of the relay server ✅
+- Ensure the system is resiliant and propogates events relay-to-relay ✅
 - Ensure events are de-duped across the network when shared relay-to-relay
 - Ensure users can use existing keys, ideally with existing 'signer' applications
-- Create a dockerised implementation of the relay
+- ~~Create a dockerised implementation of the relay~~ ✅
 - Explore other deployment options (desktop application, flatpak etc)
 
 
