@@ -13,7 +13,7 @@ is to built a decentralised, mesh-based relay system for hyper-localised communi
 - Ensure users can use existing keys, ideally with existing 'signer' applications
 - Ensure mesh 'bridges' don't propogate relay events to no-direct relays (avoid event leakage)
 - ~~Create a dockerised implementation of the relay~~ ✅
-- Explore other deployment options (desktop application, flatpak etc)
+- Explore other deployment options (desktop application, flatpak, TUI etc)
 
 
 #### Documentation Goals
