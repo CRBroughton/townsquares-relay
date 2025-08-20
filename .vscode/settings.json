@@ -3,6 +3,7 @@
         "relay",
         "relay-manager",
         "dependencies",
-        "deployment"
+        "deployment",
+        "logging"
     ]
 }
