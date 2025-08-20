@@ -35,7 +35,10 @@ type RelayManager struct {
 }
 
 func NewRelayManager() *RelayManager {
-	logger := logger.NewRelayLogger()
+	logger, err := logger.NewRelayLogger()
+	if err != nil {
+		panic(err)
+	}
 	return &RelayManager{
 		connections:   make(map[string]*RelayConnection),
 		eventStore:    make(map[string]*nostr.Event),

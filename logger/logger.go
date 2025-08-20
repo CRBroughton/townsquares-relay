@@ -9,7 +9,49 @@ import (
 )
 
 type RelayLogger struct {
-	*log.Logger
+	consoleLogger *log.Logger
+	fileLogger    *log.Logger
+}
+
+func (rl *RelayLogger) log(level log.Level, msg string, keyvals ...interface{}) {
+	switch level {
+	case log.DebugLevel:
+		rl.consoleLogger.Debug(msg, keyvals...)
+		rl.fileLogger.Debug(msg, keyvals...)
+	case log.InfoLevel:
+		rl.consoleLogger.Info(msg, keyvals...)
+		rl.fileLogger.Info(msg, keyvals...)
+	case log.WarnLevel:
+		rl.consoleLogger.Warn(msg, keyvals...)
+		rl.fileLogger.Warn(msg, keyvals...)
+	case log.ErrorLevel:
+		rl.consoleLogger.Error(msg, keyvals...)
+		rl.fileLogger.Error(msg, keyvals...)
+	case log.FatalLevel:
+		rl.consoleLogger.Fatal(msg, keyvals...)
+		rl.fileLogger.Fatal(msg, keyvals...)
+	}
+}
+
+func (rl *RelayLogger) Info(msg string, keyvals ...interface{}) {
+	rl.log(log.InfoLevel, msg, keyvals...)
+}
+func (rl *RelayLogger) Error(msg string, keyvals ...interface{}) {
+	rl.log(log.ErrorLevel, msg, keyvals...)
+}
+func (rl *RelayLogger) Debug(msg string, keyvals ...interface{}) {
+	rl.log(log.DebugLevel, msg, keyvals...)
+}
+func (rl *RelayLogger) Warn(msg string, keyvals ...interface{}) {
+	rl.log(log.WarnLevel, msg, keyvals...)
+}
+func (rl *RelayLogger) Fatal(msg string, keyvals ...interface{}) {
+	rl.log(log.FatalLevel, msg, keyvals...)
+}
+
+func (rl *RelayLogger) SetLevel(level log.Level) {
+	rl.consoleLogger.SetLevel(level)
+	rl.fileLogger.SetLevel(level)
 }
 
 func (rl *RelayLogger) ConnectingToRelay(relayURL string) {
@@ -25,7 +67,7 @@ func (rl *RelayLogger) FailureToConnectToRelay(relayURL string, err error) {
 }
 
 func (rl *RelayLogger) FailureToPublishEvent(relayURL string, err error) {
-	rl.Info("Publishing event failed",
+	rl.Error("Publishing event failed",
 		"relay_url", relayURL,
 		"error", err,
 	)
@@ -49,19 +91,26 @@ func (rl *RelayLogger) EventReceived(relayURL, eventID string) {
 		"event_id", eventID,
 	)
 }
+
 func (rl *RelayLogger) EventPublished(relayURL, eventID string) {
 	rl.Info("Event published",
 		"relay_url", relayURL,
 		"event_id", eventID,
 	)
 }
+
 func (rl *RelayLogger) SubscriptionCreated(relayURL string) {
 	rl.Info("Subscription created",
 		"relay_url", relayURL,
 	)
 }
 
-func NewRelayLogger() *RelayLogger {
+func NewRelayLogger() (*RelayLogger, error) {
+	logFile, err := os.OpenFile("log.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, err
+	}
+
 	styles := log.DefaultStyles()
 
 	// Green for connections
@@ -76,14 +125,24 @@ func NewRelayLogger() *RelayLogger {
 	styles.Values["error"] = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("9"))
 
-	logger := log.NewWithOptions(os.Stderr, log.Options{
+	consoleLogger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportTimestamp: true,
 		TimeFormat:      time.RFC3339,
-		Prefix:          "🌎 nostr-relay",
+		Prefix:          "🌎 nostr-relay ",
 		Level:           log.InfoLevel,
 	})
 
-	logger.SetStyles(styles)
+	fileLogger := log.NewWithOptions(logFile, log.Options{
+		ReportTimestamp: true,
+		TimeFormat:      time.RFC3339,
+		Level:           log.InfoLevel,
+		Formatter:       log.JSONFormatter,
+	})
 
-	return &RelayLogger{Logger: logger}
+	consoleLogger.SetStyles(styles)
+
+	return &RelayLogger{
+		consoleLogger: consoleLogger,
+		fileLogger:    fileLogger,
+	}, nil
 }
