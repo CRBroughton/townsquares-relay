@@ -31,19 +31,21 @@ type RelayManager struct {
 	storeMu       sync.RWMutex
 	seenEvents    map[string]bool
 	seenMu        sync.RWMutex
+	logger        *logger.RelayLogger
 }
 
 func NewRelayManager() *RelayManager {
+	logger := logger.NewRelayLogger()
 	return &RelayManager{
 		connections:   make(map[string]*RelayConnection),
 		eventStore:    make(map[string]*nostr.Event),
 		eventMetadata: make(map[string]*EventMetadata),
 		seenEvents:    make(map[string]bool),
+		logger:        logger,
 	}
 }
 
 func (rm *RelayManager) Connect(ctx context.Context, url string) error {
-	logger := logger.NewRelayLogger()
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
@@ -52,10 +54,10 @@ func (rm *RelayManager) Connect(ctx context.Context, url string) error {
 		return nil
 	}
 
-	logger.ConnectingToRelay(url)
+	rm.logger.ConnectingToRelay(url)
 	relay, err := nostr.RelayConnect(ctx, url)
 	if err != nil {
-		logger.FailureToConnectToRelay(url, err)
+		rm.logger.FailureToConnectToRelay(url, err)
 		return fmt.Errorf("failed to connect to the relay at %s: %w", url, err)
 
 	}
@@ -66,7 +68,7 @@ func (rm *RelayManager) Connect(ctx context.Context, url string) error {
 		active: true,
 	}
 	rm.connections[url] = conn
-	log.Printf("Connected to the external relay at: %s", url)
+	rm.logger.RelayConnected(url)
 
 	return nil
 }
@@ -90,7 +92,7 @@ func (rm *RelayManager) handleIncomingEvent(event *nostr.Event, sourceURL string
 	}
 
 	rm.storeMu.Unlock()
-	log.Printf("Received event %s from the relay %s", event.ID[:8], sourceURL)
+	rm.logger.EventReceived(sourceURL, event.ID[:8])
 }
 
 func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
@@ -104,11 +106,10 @@ func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
 		log.Printf("Failed to subscribe to the relay at %s: %v", conn.URL, err)
 		return
 	}
-
-	log.Printf("Subscribed to the events from relay %s", conn.URL)
+	rm.logger.SubscriptionCreated(conn.URL)
 
 	for event := range sub.Events {
-		log.Printf("Recieved event %s from relay %s", event.ID[:8], conn.URL)
+		rm.logger.EventReceived(conn.URL, event.ID[:8])
 		rm.handleIncomingEvent(event, conn.URL)
 	}
 }
@@ -138,9 +139,9 @@ func (rm *RelayManager) Broadcast(ctx context.Context, event *nostr.Event) {
 
 		go func(relay *nostr.Relay, relayURL string) {
 			if err := relay.Publish(ctx, *event); err != nil {
-				log.Printf("Failed to publish event to the relay %s: %v", relayURL, err)
+				rm.logger.FailureToPublishEvent(relayURL, err)
 			} else {
-				log.Printf("Published event %s to the relay %s", event.ID[:8], relayURL)
+				rm.logger.EventPublished(relayURL, event.ID[:8])
 			}
 		}(conn.Relay, url)
 	}
@@ -174,6 +175,6 @@ func (rm *RelayManager) Close() {
 
 	for url, conn := range rm.connections {
 		conn.Relay.Close()
-		log.Printf("Closed the connection to the external relay at: %s", url)
+		rm.logger.RelayDisconnected(url)
 	}
 }
