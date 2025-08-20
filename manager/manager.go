@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
+	"github.crom/crbroughton/townsquares-relay/logger"
 )
 
 type RelayConnection struct {
@@ -42,6 +43,7 @@ func NewRelayManager() *RelayManager {
 }
 
 func (rm *RelayManager) Connect(ctx context.Context, url string) error {
+	logger := logger.NewRelayLogger()
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
@@ -50,10 +52,12 @@ func (rm *RelayManager) Connect(ctx context.Context, url string) error {
 		return nil
 	}
 
-	log.Printf("Connecting to an external relay at: %s", url)
+	logger.ConnectingToRelay(url)
 	relay, err := nostr.RelayConnect(ctx, url)
 	if err != nil {
+		logger.FailureToConnectToRelay(url, err)
 		return fmt.Errorf("failed to connect to the relay at %s: %w", url, err)
+
 	}
 
 	conn := &RelayConnection{
