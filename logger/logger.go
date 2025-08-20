@@ -24,8 +24,39 @@ func (rl *RelayLogger) FailureToConnectToRelay(relayURL string, err error) {
 		"error", err)
 }
 
+func (rl *RelayLogger) FailureToPublishEvent(relayURL string, err error) {
+	rl.Info("Publishing event failed",
+		"relay_url", relayURL,
+		"error", err,
+	)
+}
+
 func (rl *RelayLogger) RelayConnected(relayURL string) {
 	rl.Info("Relay connected",
+		"relay_url", relayURL,
+	)
+}
+
+func (rl *RelayLogger) RelayDisconnected(relayURL string) {
+	rl.Info("Relay disconnected",
+		"relay_url", relayURL,
+	)
+}
+
+func (rl *RelayLogger) EventReceived(relayURL, eventID string) {
+	rl.Info("Event received",
+		"relay_url", relayURL,
+		"event_id", eventID,
+	)
+}
+func (rl *RelayLogger) EventPublished(relayURL, eventID string) {
+	rl.Info("Event published",
+		"relay_url", relayURL,
+		"event_id", eventID,
+	)
+}
+func (rl *RelayLogger) SubscriptionCreated(relayURL string) {
+	rl.Info("Subscription created",
 		"relay_url", relayURL,
 	)
 }
