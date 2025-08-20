@@ -112,7 +112,6 @@ func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
 	rm.logger.SubscriptionCreated(conn.URL)
 
 	for event := range sub.Events {
-		rm.logger.EventReceived(conn.URL, event.ID[:8])
 		rm.handleIncomingEvent(event, conn.URL)
 	}
 }
