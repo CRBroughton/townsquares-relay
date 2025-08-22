@@ -70,8 +70,6 @@ func (rm *RelayManager) Connect(ctx context.Context, url string) {
 	}
 	rm.connections[url] = conn
 	rm.logger.RelayConnected(url)
-
-	return nil
 }
 
 func (rm *RelayManager) handleIncomingEvent(event *nostr.Event, sourceURL string) {
