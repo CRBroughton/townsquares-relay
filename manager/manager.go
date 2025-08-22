@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -48,20 +47,19 @@ func NewRelayManager() *RelayManager {
 	}
 }
 
-func (rm *RelayManager) Connect(ctx context.Context, url string) error {
+func (rm *RelayManager) Connect(ctx context.Context, url string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
 	if _, exists := rm.connections[url]; exists {
 		// We're already connected to this relay
-		return nil
+		return
 	}
 
 	rm.logger.ConnectingToRelay(url)
 	relay, err := nostr.RelayConnect(ctx, url)
 	if err != nil {
 		rm.logger.FailureToConnectToRelay(url, err)
-		return fmt.Errorf("failed to connect to the relay at %s: %w", url, err)
 
 	}
 

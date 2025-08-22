@@ -51,9 +51,7 @@ func main() {
 	ctx := context.Background()
 	relayManager := manager.NewRelayManager()
 	for _, relayURL := range config.Relays {
-		if err := relayManager.Connect(ctx, relayURL); err != nil {
-			log.Printf("⚠️ Failed to connect to relay %s: %v", relayURL, err)
-		}
+		relayManager.Connect(ctx, relayURL)
 	}
 	defer relayManager.Close()
 
