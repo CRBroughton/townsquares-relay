@@ -45,10 +45,7 @@ func TestCanSuccessfullyConnectToRelay(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := rm.Connect(ctx, wsURL)
-	if err != nil {
-		t.Fatalf("Expected successful connection, got error: %v", err)
-	}
+	rm.Connect(ctx, wsURL)
 
 	// Here we verify our mock connection was stored with our relay
 	rm.mu.RLock()
@@ -78,10 +75,8 @@ func TestVerifyInvalidURLSArentStored(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	err := rm.Connect(ctx, "invalid-url")
-	if err == nil {
-		t.Fatal("Expected error for invalid URL, got nil")
-	}
+	rm.Connect(ctx, "invalid-url")
+	// Since Connect no longer returns errors, we just verify no connection was stored
 	rm.mu.RLock()
 	count := len(rm.connections)
 	rm.mu.RUnlock()
@@ -97,10 +92,8 @@ func TestVerifyUnreachableURLSArentStored(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	err := rm.Connect(ctx, "ws://localhost:99999")
-	if err == nil {
-		t.Fatal("Expected error for unreachable URL, got nil")
-	}
+	rm.Connect(ctx, "ws://localhost:99999")
+	// Since Connect no longer returns errors, we just verify no connection was stored
 
 	rm.mu.RLock()
 	count := len(rm.connections)
@@ -122,20 +115,14 @@ func TestVerifyDuplicateConnectionsArentStored(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := rm.Connect(ctx, wsURL)
-	if err != nil {
-		t.Fatalf("First connection failed: %v", err)
-	}
+	rm.Connect(ctx, wsURL)
 
 	rm.mu.RLock()
 	firstConn := rm.connections[wsURL]
 	rm.mu.RUnlock()
 
 	// Second connection attempt
-	err = rm.Connect(ctx, wsURL)
-	if err != nil {
-		t.Fatalf("Second connection failed: %v", err)
-	}
+	rm.Connect(ctx, wsURL)
 
 	// Here we're verifying only one instance of the connection has been stored
 	rm.mu.RLock()
@@ -168,19 +155,19 @@ func TestCanConnectToMultipleRelays(t *testing.T) {
 	defer cancel()
 
 	// Here we're connecting to both relays concurrently
-	errChan := make(chan error, 2)
+	done := make(chan bool, 2)
 	go func() {
-		errChan <- rm.Connect(ctx, wsURL1)
+		rm.Connect(ctx, wsURL1)
+		done <- true
 	}()
 	go func() {
-		errChan <- rm.Connect(ctx, wsURL2)
+		rm.Connect(ctx, wsURL2)
+		done <- true
 	}()
 
 	// Waiting for both connections...
 	for i := 0; i < 2; i++ {
-		if err := <-errChan; err != nil {
-			t.Fatalf("Concurrent connection failed: %v", err)
-		}
+		<-done
 	}
 
 	rm.mu.RLock()
@@ -209,10 +196,8 @@ func TestVerifyCancelledContextsArentStored(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := rm.Connect(ctx, "ws://localhost:8080")
-	if err == nil {
-		t.Fatal("Expected error for cancelled context, got nil")
-	}
+	rm.Connect(ctx, "ws://localhost:8080")
+	// Since Connect no longer returns errors, we just verify no connection was stored
 
 	rm.mu.RLock()
 	count := len(rm.connections)

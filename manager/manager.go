@@ -60,7 +60,7 @@ func (rm *RelayManager) Connect(ctx context.Context, url string) {
 	relay, err := nostr.RelayConnect(ctx, url)
 	if err != nil {
 		rm.logger.FailureToConnectToRelay(url, err)
-
+		return
 	}
 
 	conn := &RelayConnection{
