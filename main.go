@@ -38,7 +38,12 @@ func loadConfig(filename string) (*Config, error) {
 }
 
 func main() {
-	config, err := loadConfig("config.json")
+	configFile := "config.json"
+	if len(os.Args) > 1 {
+		configFile = os.Args[1]
+	}
+	config, err := loadConfig(configFile)
+
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
