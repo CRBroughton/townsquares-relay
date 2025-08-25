@@ -2,7 +2,7 @@ package manager
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"sync"
 	"time"
 
@@ -14,6 +14,7 @@ type RelayConnection struct {
 	URL    string
 	Relay  *nostr.Relay
 	active bool
+	mu     sync.RWMutex
 }
 
 type EventMetadata struct {
@@ -47,20 +48,20 @@ func NewRelayManager() *RelayManager {
 	}
 }
 
-func (rm *RelayManager) Connect(ctx context.Context, url string) {
+func (rm *RelayManager) Connect(ctx context.Context, url string) error {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
 	if _, exists := rm.connections[url]; exists {
 		// We're already connected to this relay
-		return
+		return nil
 	}
 
 	rm.logger.ConnectingToRelay(url)
 	relay, err := nostr.RelayConnect(ctx, url)
 	if err != nil {
 		rm.logger.FailureToConnectToRelay(url, err)
-		return
+		return fmt.Errorf("failed to connect to relay %s: %w", url, err)
 	}
 
 	conn := &RelayConnection{
@@ -70,6 +71,10 @@ func (rm *RelayManager) Connect(ctx context.Context, url string) {
 	}
 	rm.connections[url] = conn
 	rm.logger.RelayConnected(url)
+
+	go rm.Subscribe(ctx, conn)
+
+	return nil
 }
 
 func (rm *RelayManager) handleIncomingEvent(event *nostr.Event, sourceURL string) {
@@ -95,21 +100,82 @@ func (rm *RelayManager) handleIncomingEvent(event *nostr.Event, sourceURL string
 }
 
 func (rm *RelayManager) Subscribe(ctx context.Context, conn *RelayConnection) {
-	sub, err := conn.Relay.Subscribe(ctx, []nostr.Filter{
-		{
-			Kinds: []int{nostr.KindTextNote},
-			Limit: 100,
-		},
-	})
-	if err != nil {
-		log.Printf("Failed to subscribe to the relay at %s: %v", conn.URL, err)
-		return
-	}
-	rm.logger.SubscriptionCreated(conn.URL)
+	backoff := 5 * time.Second
+	maxBackoff := 60 * time.Second
 
-	for event := range sub.Events {
-		rm.handleIncomingEvent(event, conn.URL)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		sub, err := conn.Relay.Subscribe(ctx, []nostr.Filter{
+			{
+				Kinds: []int{nostr.KindTextNote},
+				Limit: 100,
+			},
+		})
+		if err != nil {
+			rm.logger.SubscriptionFailed(conn.URL, err)
+			conn.mu.Lock()
+			conn.active = false
+			conn.mu.Unlock()
+
+			time.Sleep(backoff)
+			backoff = backoff * 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+
+			if err := rm.reconnect(ctx, conn); err != nil {
+				rm.logger.FailureToConnectToRelay(conn.URL, err)
+				continue
+			}
+			backoff = 5 * time.Second // Reset backoff on successful reconnect
+			continue
+		}
+
+		conn.mu.Lock()
+		conn.active = true
+		conn.mu.Unlock()
+		backoff = 5 * time.Second // Reset backoff on successful subscribe
+
+		for ev := range sub.Events {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				rm.handleIncomingEvent(ev, conn.URL)
+			}
+		}
+
+		rm.logger.ConnectionLost(conn.URL)
+		conn.mu.Lock()
+		conn.active = false
+		conn.mu.Unlock()
+
+		time.Sleep(backoff)
 	}
+}
+
+func (rm *RelayManager) reconnect(ctx context.Context, conn *RelayConnection) error {
+	if conn.Relay != nil {
+		conn.Relay.Close()
+	}
+
+	relay, err := nostr.RelayConnect(ctx, conn.URL)
+	if err != nil {
+		return err
+	}
+
+	conn.mu.Lock()
+	conn.Relay = relay
+	conn.active = true
+	conn.mu.Unlock()
+
+	rm.logger.ConnectionReestablished(conn.URL)
+	return nil
 }
 
 func (rm *RelayManager) Broadcast(ctx context.Context, event *nostr.Event) {

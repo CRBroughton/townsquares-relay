@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/fiatjaf/eventstore/badger"
 	"github.com/fiatjaf/khatru"
@@ -55,9 +56,20 @@ func main() {
 
 	ctx := context.Background()
 	relayManager := manager.NewRelayManager()
+
 	for _, relayURL := range config.Relays {
-		relayManager.Connect(ctx, relayURL)
+		go func(relayURL string) {
+			for {
+				err := relayManager.Connect(ctx, relayURL)
+				if err != nil {
+					time.Sleep(10 * time.Second)
+					continue
+				}
+				break
+			}
+		}(relayURL)
 	}
+
 	defer relayManager.Close()
 
 	relayManager.StartSubscriptions(ctx)

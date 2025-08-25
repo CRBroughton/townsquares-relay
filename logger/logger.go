@@ -60,6 +60,16 @@ func (rl *RelayLogger) ConnectingToRelay(relayURL string) {
 	)
 }
 
+func (rl *RelayLogger) ConnectionLost(relayURL string) {
+	rl.Error("Connection to rleay lost",
+		"relay_url", relayURL)
+}
+
+func (rl *RelayLogger) ConnectionReestablished(relayURL string) {
+	rl.Info("Connection reestablished",
+		"relay_url", relayURL)
+}
+
 func (rl *RelayLogger) FailureToConnectToRelay(relayURL string, err error) {
 	rl.Error("Failed to connect to relay",
 		"relay_url", relayURL,
@@ -102,6 +112,13 @@ func (rl *RelayLogger) EventPublished(relayURL, eventID string) {
 func (rl *RelayLogger) SubscriptionCreated(relayURL string) {
 	rl.Info("Subscription created",
 		"relay_url", relayURL,
+	)
+}
+
+func (rl *RelayLogger) SubscriptionFailed(relayURL string, err error) {
+	rl.Error("Failed to subscribe",
+		"relay_url", relayURL,
+		"error", err,
 	)
 }
 
