@@ -2,3 +2,4 @@ config.json
 *db
 log*
 townsquares-relay
+tailscale*-*
