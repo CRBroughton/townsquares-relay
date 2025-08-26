@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
@@ -24,14 +25,15 @@ type EventMetadata struct {
 }
 
 type RelayManager struct {
-	connections   map[string]*RelayConnection
-	mu            sync.RWMutex
-	eventStore    map[string]*nostr.Event
-	eventMetadata map[string]*EventMetadata
-	storeMu       sync.RWMutex
-	seenEvents    map[string]bool
-	seenMu        sync.RWMutex
-	logger        *logger.RelayLogger
+	connections     map[string]*RelayConnection
+	mu              sync.RWMutex
+	eventStore      map[string]*nostr.Event
+	eventMetadata   map[string]*EventMetadata
+	storeMu         sync.RWMutex
+	seenEvents      map[string]bool
+	seenMu          sync.RWMutex
+	logger          *logger.RelayLogger
+	tailscaleClient *http.Client
 }
 
 func NewRelayManager() *RelayManager {
@@ -40,12 +42,19 @@ func NewRelayManager() *RelayManager {
 		panic(err)
 	}
 	return &RelayManager{
-		connections:   make(map[string]*RelayConnection),
-		eventStore:    make(map[string]*nostr.Event),
-		eventMetadata: make(map[string]*EventMetadata),
-		seenEvents:    make(map[string]bool),
-		logger:        logger,
+		connections:     make(map[string]*RelayConnection),
+		eventStore:      make(map[string]*nostr.Event),
+		eventMetadata:   make(map[string]*EventMetadata),
+		seenEvents:      make(map[string]bool),
+		logger:          logger,
+		tailscaleClient: http.DefaultClient,
 	}
+}
+
+func (rm *RelayManager) SetTailscaleClient(client *http.Client) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	rm.tailscaleClient = client
 }
 
 func (rm *RelayManager) Connect(ctx context.Context, url string) error {
