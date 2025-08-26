@@ -4,6 +4,7 @@
         "relay-manager",
         "dependencies",
         "deployment",
-        "logging"
+        "logging",
+        "tsnet"
     ]
 }
