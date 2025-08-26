@@ -13,15 +13,21 @@ import (
 	"github.com/fiatjaf/khatru"
 	"github.com/nbd-wtf/go-nostr"
 	"github.crom/crbroughton/townsquares-relay/manager"
+	"github.crom/crbroughton/townsquares-relay/tsnet"
 )
 
 type Config struct {
-	Port        string   `json:"port"`
-	Name        string   `json:"name"`
-	PubKey      string   `json:"pubkey"`
-	Description string   `json:"description"`
-	Relays      []string `json:"relays"`
-	DBPath      string   `json:"db_path"`
+	Port              string   `json:"port"`
+	Name              string   `json:"name"`
+	PubKey            string   `json:"pubkey"`
+	Description       string   `json:"description"`
+	Relays            []string `json:"relays"`
+	DBPath            string   `json:"db_path"`
+	TailscaleEnabled  bool     `json:"tailscale_enabled,omitempty"`
+	TailscaleAuthKey  string   `json:"tailscale_auth_key,omitempty"`
+	TailscaleHostname string   `json:"tailscale_hostname,omitempty"`
+	TailscaleHTTPS    bool     `json:"tailscale_https,omitempty"`
+	TailscaleStateDir string   `json:"tailscale_state_dir,omitempty"`
 }
 
 func loadConfig(filename string) (*Config, error) {
@@ -56,6 +62,23 @@ func main() {
 
 	ctx := context.Background()
 	relayManager := manager.NewRelayManager()
+
+	// If Tailscale is enabled, set up the Tailscale HTTP client for inter-relay communication
+	if config.TailscaleEnabled {
+		tsConfig := tsnet.Config{
+			Hostname: config.TailscaleHostname,
+			AuthKey:  config.TailscaleAuthKey,
+			StateDir: config.TailscaleStateDir,
+			UseHTTPS: config.TailscaleHTTPS,
+			Port:     config.Port,
+		}
+
+		tsServer, err := tsnet.NewServer(tsConfig)
+		if err != nil {
+			log.Fatalf("Failed to create Tailscale server: %v", err)
+		}
+		relayManager.SetTailscaleClient(tsServer.HTTPClient())
+	}
 
 	for _, relayURL := range config.Relays {
 		go func(relayURL string) {
@@ -151,6 +174,40 @@ func main() {
 		w.Header().Set("content-type", "text/html")
 	})
 
-	fmt.Printf("running on %s\n", config.Port)
-	log.Fatal(http.ListenAndServe(config.Port, relay))
+	// Start the server - either Tailscale or regular HTTP
+	if config.TailscaleEnabled {
+		tsConfig := tsnet.Config{
+			Hostname: config.TailscaleHostname,
+			AuthKey:  config.TailscaleAuthKey,
+			StateDir: config.TailscaleStateDir,
+			UseHTTPS: config.TailscaleHTTPS,
+			Port:     config.Port,
+		}
+
+		tsServer, err := tsnet.NewServer(tsConfig)
+		if err != nil {
+			log.Fatalf("Failed to create Tailscale server: %v", err)
+		}
+		defer tsServer.Close()
+
+		if err := tsServer.Listen(tsConfig); err != nil {
+			log.Fatalf("Failed to listen on Tailscale network: %v", err)
+		}
+
+		hostname := config.TailscaleHostname
+		if hostname == "" {
+			hostname = "townsquares-relay"
+		}
+
+		protocol := "http"
+		if config.TailscaleHTTPS {
+			protocol = "https"
+		}
+
+		fmt.Printf("running on Tailscale network as %s://%s%s\n", protocol, hostname, config.Port)
+		log.Fatal(tsServer.Serve(relay))
+	} else {
+		fmt.Printf("running on %s\n", config.Port)
+		log.Fatal(http.ListenAndServe(config.Port, relay))
+	}
 }

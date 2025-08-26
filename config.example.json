@@ -4,5 +4,10 @@
   "pubkey": "YOUR_ACTUAL_PUB_KEY_HERE",
   "description": "A townsquares relay",
   "relays": [],
-  "db_path": "db"
+  "db_path": "db",
+  "tailscale_enabled": false,
+  "tailscale_auth_key": "YOUR_TAILSCALE_AUTH_KEY_HERE",
+  "tailscale_hostname": "townsquares-relay-1",
+  "tailscale_https": false,
+  "tailscale_state_dir": "/var/lib/tailscale-relay"
 }
