@@ -122,6 +122,25 @@ func (rl *RelayLogger) SubscriptionFailed(relayURL string, err error) {
 	)
 }
 
+func (rl *RelayLogger) TimestampsSaved(count int) {
+	rl.Info("Timestamps saved to disk",
+		"relay_count", count,
+	)
+}
+
+func (rl *RelayLogger) TimestampsLoaded(count int) {
+	rl.Info("Timestamps loaded from disk",
+		"relay_count", count,
+	)
+}
+
+func (rl *RelayLogger) HistoricalSync(relayURL string, fromTime time.Time) {
+	rl.Info("Historical sync starting",
+		"relay_url", relayURL,
+		"from_time", fromTime.Format(time.RFC3339),
+	)
+}
+
 func NewRelayLogger() (*RelayLogger, error) {
 	logFile, err := os.OpenFile("log.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
